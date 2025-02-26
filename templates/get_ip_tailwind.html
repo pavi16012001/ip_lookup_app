@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP Lookup</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-6">
+        <h1 class="text-3xl font-bold text-center mb-6">IP Address Lookup</h1>
+        <div class="flex justify-center mb-4">
+            <input type="text" id="ip_address" placeholder="Enter IP address" class="border border-gray-300 rounded-lg p-2 w-1/3" />
+            <button id="lookup_btn" class="ml-2 bg-blue-500 text-white rounded-lg px-4 py-2 hover:bg-blue-600">Lookup</button>
+            <button id="list_btn" class="ml-2 bg-green-500 text-white rounded-lg px-4 py-2 hover:bg-green-600">List Stored</button>
+        </div>
+        <div id="result" class="mt-6 bg-white p-4 rounded-lg shadow-md"></div>
+    </div>
+
+    <script>
+        
+        $(document).ready(function() {
+    $('#lookup_btn').click(function() {
+        const ipAddress = $('#ip_address').val();
+        $.ajax({
+            url: 'http://127.0.0.1:5000/fetch-ip',
+            type: 'POST',
+            data: { ip: ipAddress },
+            success: function(data) {
+                const detailsString = data?.details?.replace(/'/g, '"');
+                const details = JSON.parse(detailsString);
+                $('#result').html(`
+                    <h3 class="text-xl font-semibold">IP Information:</h3>
+                    <p><strong>IP:</strong> ${data?.ip}</p>
+                    <p><strong>Host Name:</strong> ${details?.hostname}</p>
+                    <p><strong>City:</strong> ${details?.city}</p>
+                    <p><strong>Region:</strong> ${details?.region}</p>
+                    <p><strong>Country:</strong> ${details?.country}</p>
+                    <p><strong>Location:</strong> ${details?.loc}</p>
+                    <p><strong>Org:</strong> ${details?.org}</p>
+                    <p><strong>TimeZone:</strong> ${details?.timezone}</p>    
+                `);
+            },
+            error: function(xhr, status, error) {
+                console.log(status, error, "error")
+                $('#result').html(`<p class="text-red-500">Error fetching data. Please try again with a valid IP address.</p>`);
+            }
+        });
+    });
+
+    $('#list_btn').click(function() { 
+        $.ajax({
+            url: 'http://127.0.0.1:5000/store-ip',
+            type: 'GET',
+            success: function(data) {
+                const storedIps = data.stored_ips; // Assuming the response structure
+                let tableContent = `
+                    <h3 class="text-xl font-semibold mb-4">Stored IPs:</h3>
+                    <table class="min-w-full bg-white border border-gray-300">
+                        <thead>
+                            <tr class="bg-gray-200">
+                                <th class="py-2 px-4 border">IP Address</th>
+                                <th class="py-2 px-4 border">Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                storedIps.forEach(ipInfo => {
+                    const ip = ipInfo[0];
+                    const details = JSON.parse(ipInfo[1].replace(/'/g, '"')); // Parse the details string
+                    tableContent += `
+                        <tr>
+                            <td class="py-2 px-4 border">${ip}</td>
+                            <td class="py-2 px-4 border">
+                                <strong>Host Name:</strong> ${details.hostname}<br>
+                                <strong>City:</strong> ${details.city}<br>
+                                <strong>Region:</strong> ${details.region}<br>
+                                <strong>Country:</strong> ${details.country}<br>
+                                <strong>Location:</strong> ${details.loc}<br>
+                                <strong>Org:</strong> ${details.org}<br>
+                                <strong>TimeZone:</strong> ${details.timezone}
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                tableContent += `
+                        </tbody>
+                    </table>
+                `;
+
+                $('#result').html(tableContent);
+            },
+            error: function(xhr, status, error) {
+                console.log(status, error, "error")
+                $('#result').html(`<p class="text-red-500">Error fetching data. Please try again.</p>`);
+            }
+        });
+    });
+});
+    </script>
+</body>
+</html>
