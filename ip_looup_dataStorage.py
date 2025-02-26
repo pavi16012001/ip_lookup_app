@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import requests
 import re
@@ -14,13 +14,34 @@ conn = pool.getconn()
 # Database setup
 def init_db():
     cursor = conn.cursor()
-    cursor.execute('''
+    try:
+        cursor.execute('''
         CREATE TABLE IF NOT EXISTS ip_info (
             ip TEXT PRIMARY KEY,
             details TEXT
         )
     ''')
-    conn.commit()
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        print(f"Database error: {e}")
+        return None
+    finally:
+        pool.putconn(conn)    
+    
+    
+
+def ensure_table_exists():
+    try:
+        cursor = conn.cursor()
+        print("ensure_table_exists")
+        cursor.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'ip_info')")
+        exists = cursor.fetchone()[0]
+        if not exists:
+            init_db()
+    except Exception as e:
+        conn.rollback()
+        print(f"Error checking/creating table: {e}")    
 
 # Validate IP address
 def is_valid_ip(ip):
@@ -56,7 +77,9 @@ def get_ip_details(ip):
 
 @app.route('/fetch-ip', methods=['POST'])
 def fetch_ip():
+    ensure_table_exists()
     ip = request.form.get('ip')
+    ip = re.sub(r'[^0-9.]', '', ip)  # replace all the special characters from ip address
     if not is_valid_ip(ip):
         return jsonify({'error': 'Invalid IP address'}), 400
 
@@ -73,12 +96,16 @@ def fetch_ip():
 
 @app.route('/store-ip', methods=['GET'])
 def store_ip():
+    ensure_table_exists()
     cursor = conn.cursor()
     cursor.execute('SELECT ip,details FROM ip_info')
     ips = cursor.fetchall()
     # conn.close()
     return jsonify({'stored_ips': [ip for ip in ips]}), 200
 
+@app.route('/', methods=["GET"]) 
+def home():
+    return render_template('get_ip_tailwind.html')
+
 if __name__ == '__main__':
-    init_db()
-    app.run(debug=True)
+    app.run(host = 'localhost',debug=True)

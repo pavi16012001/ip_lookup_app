@@ -22,14 +22,21 @@
         
         $(document).ready(function() {
     $('#lookup_btn').click(function() {
-        const ipAddress = $('#ip_address').val();
+        const ipAddress = $('#ip_address').val();       
         $.ajax({
             url: 'http://127.0.0.1:5000/fetch-ip',
             type: 'POST',
             data: { ip: ipAddress },
             success: function(data) {
-                const detailsString = data?.details?.replace(/'/g, '"');
-                const details = JSON.parse(detailsString);
+                let details;
+                if (typeof data.details === 'string') {
+                    details = data.details.replace(/'/g, '"');
+                } else {
+                    // Handle the case where details is not a string
+                    details = JSON.stringify(data.details); // Convert to string if it's an object
+                }
+                details = JSON.parse(details);
+                 $('#result').html(''); //clear previous content 
                 $('#result').html(`
                     <h3 class="text-xl font-semibold">IP Information:</h3>
                     <p><strong>IP:</strong> ${data?.ip}</p>
